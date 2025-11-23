@@ -59,7 +59,7 @@ docker-run:
 		echo "Environment file $$ENV_FILE not found. Please create it."; \
 		exit 1; \
 	fi; \
-	APP_ENV=development $(DOCKER_COMPOSE) --env-file $$ENV_FILE up -d --build db app
+	APP_ENV=development $(DOCKER_COMPOSE) --env-file $$ENV_FILE up -d --build app
 
 docker-run-env:
 	@if [ -z "$(ENV)" ]; then \
@@ -75,8 +75,7 @@ docker-run-env:
 		echo "Environment file $$ENV_FILE not found. Please create it."; \
 		exit 1; \
 	fi; \
-	APP_ENV=$(ENV) $(DOCKER_COMPOSE) --env-file $$ENV_FILE up -d --build db app
-	# @./scripts/ensure-db-user.sh $(ENV)
+	APP_ENV=$(ENV) $(DOCKER_COMPOSE) --env-file $$ENV_FILE up -d --build app
 
 docker-logs:
 	@if [ -z "$(ENV)" ]; then \
@@ -92,7 +91,7 @@ docker-logs:
 		echo "Environment file $$ENV_FILE not found. Please create it."; \
 		exit 1; \
 	fi; \
-	APP_ENV=$(ENV) $(DOCKER_COMPOSE) --env-file $$ENV_FILE logs -f app db
+	APP_ENV=$(ENV) $(DOCKER_COMPOSE) --env-file $$ENV_FILE logs -f app
 
 docker-stop:
 	@if [ -z "$(ENV)" ]; then \
