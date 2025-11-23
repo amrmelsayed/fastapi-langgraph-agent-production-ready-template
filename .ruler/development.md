@@ -51,15 +51,6 @@ make lint      # Lint with ruff
 make format    # Format with ruff and black
 ```
 
-### Evaluation Framework
-```bash
-make eval              # Interactive evaluation mode
-make eval-quick        # Quick evaluation with defaults
-make eval-no-report    # Evaluation without report generation
-
-# Reports saved to: evals/reports/evaluation_report_YYYYMMDD_HHMMSS.json
-```
-
 ## Architecture Deep Dive
 
 ### Application Entry Point
@@ -179,26 +170,6 @@ LangGraph's `AsyncPostgresSaver` persists conversation state to PostgreSQL, enab
 - Multi-turn conversations
 - Workflow replay/debugging
 
-## Evaluation Framework
-
-**Purpose**: Metric-based evaluation of LLM outputs using Langfuse traces
-
-**Metrics** (`evals/metrics/prompts/`):
-- Relevancy: Addresses the query?
-- Hallucination: Contains fabricated info?
-- Conciseness: Appropriately brief?
-- Helpfulness: Helps the user?
-- Toxicity: Contains harmful content?
-
-**Usage**:
-- Interactive: `make eval`
-- Quick: `make eval-quick`
-- No report: `make eval-no-report`
-
-**Output**: JSON reports in `evals/reports/` with success rates and trace details
-
-**Custom Metrics**: Add `.md` files to `evals/metrics/prompts/`
-
 ## Common Development Tasks
 
 ### Adding a New API Endpoint
@@ -300,7 +271,7 @@ async def chat(request: Request, data: ChatRequest) -> ChatResponse:
 2. Generate JWT secret: `openssl rand -hex 32`
 3. Configure external PostgreSQL
 4. Set appropriate rate limits
-5. Configure Langfuse keys
+5. Configure LangSmith keys (optional, for observability)
 6. Set up Prometheus/Grafana
 7. Review CORS settings
 8. Enable uvloop (via Makefile)

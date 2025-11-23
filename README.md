@@ -8,7 +8,7 @@ A production-ready FastAPI template for building AI agent applications with Lang
 
   - FastAPI for high-performance async API endpoints with uvloop optimization
   - LangGraph integration for AI agent workflows with state persistence
-  - Langfuse for LLM observability and monitoring
+  - LangSmith for LLM observability and monitoring
   - Structured logging with environment-specific formatting and request context
   - Rate limiting with configurable rules per endpoint
   - PostgreSQL with pgvector for data persistence and vector storage
@@ -39,13 +39,6 @@ A production-ready FastAPI template for building AI agent applications with Lang
   - Type hints throughout for better IDE support
   - Easy local development setup with Makefile commands
   - Automatic retry logic with exponential backoff for resilience
-
-- **Model Evaluation Framework**
-  - Automated metric-based evaluation of model outputs
-  - Integration with Langfuse for trace analysis
-  - Detailed JSON reports with success/failure metrics
-  - Interactive command-line interface
-  - Customizable evaluation metrics
 
 ## 🚀 Quick Start
 
@@ -149,57 +142,6 @@ The Docker setup includes:
   - Database performance
   - System resource usage
 
-## 📊 Model Evaluation
-
-The project includes a robust evaluation framework for measuring and tracking model performance over time. The evaluator automatically fetches traces from Langfuse, applies evaluation metrics, and generates detailed reports.
-
-### Running Evaluations
-
-You can run evaluations with different options using the provided Makefile commands:
-
-```bash
-# Interactive mode with step-by-step prompts
-make eval [ENV=development|staging|production]
-
-# Quick mode with default settings (no prompts)
-make eval-quick [ENV=development|staging|production]
-
-# Evaluation without report generation
-make eval-no-report [ENV=development|staging|production]
-```
-
-### Evaluation Features
-
-- **Interactive CLI**: User-friendly interface with colored output and progress bars
-- **Flexible Configuration**: Set default values or customize at runtime
-- **Detailed Reports**: JSON reports with comprehensive metrics including:
-  - Overall success rate
-  - Metric-specific performance
-  - Duration and timing information
-  - Trace-level success/failure details
-
-### Customizing Metrics
-
-Evaluation metrics are defined in `evals/metrics/prompts/` as markdown files:
-
-1. Create a new markdown file (e.g., `my_metric.md`) in the prompts directory
-2. Define the evaluation criteria and scoring logic
-3. The evaluator will automatically discover and apply your new metric
-
-### Viewing Reports
-
-Reports are automatically generated in the `evals/reports/` directory with timestamps in the filename:
-
-```
-evals/reports/evaluation_report_YYYYMMDD_HHMMSS.json
-```
-
-Each report includes:
-
-- High-level statistics (total trace count, success rate, etc.)
-- Per-metric performance metrics
-- Detailed trace-level information for debugging
-
 ## 🔧 Configuration
 
 The application uses a flexible configuration system with environment-specific settings:
@@ -236,10 +178,11 @@ LONG_TERM_MEMORY_COLLECTION_NAME=agent_memories
 LONG_TERM_MEMORY_MODEL=gpt-4o-mini
 LONG_TERM_MEMORY_EMBEDDER_MODEL=text-embedding-3-small
 
-# Observability
-LANGFUSE_PUBLIC_KEY=your_public_key
-LANGFUSE_SECRET_KEY=your_secret_key
-LANGFUSE_HOST=https://cloud.langfuse.com
+# Observability (Optional - LangSmith)
+LANGCHAIN_TRACING_V2=false  # Set to true to enable LangSmith tracing
+LANGCHAIN_API_KEY=your_langsmith_api_key
+LANGCHAIN_PROJECT=langgraph-fastapi-template
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
 
 # Security
 SECRET_KEY=your_secret_key_here

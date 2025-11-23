@@ -62,8 +62,7 @@ echo "API keys: ******** (masked for security)"
 docker build --no-cache \
     --build-arg APP_ENV="$ENV" \
     --build-arg OPENAI_API_KEY="$OPENAI_API_KEY" \
-    --build-arg LANGFUSE_PUBLIC_KEY="$LANGFUSE_PUBLIC_KEY" \
-    --build-arg LANGFUSE_SECRET_KEY="$LANGFUSE_SECRET_KEY" \
+    --build-arg LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
     --build-arg JWT_SECRET_KEY="$JWT_SECRET_KEY" \
     -t fastapi-langgraph-template:"$ENV" .
 

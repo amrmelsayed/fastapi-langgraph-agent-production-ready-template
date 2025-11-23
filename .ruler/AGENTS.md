@@ -8,7 +8,7 @@ This is an AI agent application that:
 
 - Uses **LangGraph** for building stateful, multi-step AI agent workflows
 - Uses **FastAPI** for high-performance async REST API endpoints
-- Integrates **Langfuse** for LLM observability and tracing
+- Integrates **LangSmith** for LLM observability and tracing
 - Uses **PostgreSQL** with **pgvector** for long-term memory storage (mem0ai)
 - Implements **JWT authentication** with session management
 - Provides **rate limiting** with slowapi
@@ -42,7 +42,7 @@ This is an AI agent application that:
 - Define clear state schemas using Pydantic models (see `app/schemas/graph.py`)
 - Use `CompiledStateGraph` for production workflows
 - Implement `AsyncPostgresSaver` for checkpointing and persistence
-- Use LangChain's `CallbackHandler` from Langfuse for tracing LLM calls
+- LangSmith automatically traces LLM calls when `LANGCHAIN_TRACING_V2=true`
 - Structure agents as classes that manage graph creation and execution (see `app/core/langgraph/graph.py`)
 - Use `Command` for controlling graph flow between nodes
 - Implement proper streaming responses for long-running agent operations
@@ -84,7 +84,7 @@ Use structlog for all logging with these conventions:
 - **Always enable rich library** for formatted console outputs
 - Use rich for progress bars, tables, panels, and formatted text
 - Use rich.console for debugging complex data structures
-- Apply rich formatting for evaluation reports and CLI outputs
+- Apply rich formatting for CLI outputs and debugging
 
 ## Retry Logic
 
@@ -109,7 +109,7 @@ Core dependencies in this project:
 - **FastAPI** - Web framework
 - **LangGraph** - Agent workflow orchestration
 - **LangChain** - LLM abstraction and tools
-- **Langfuse** - LLM observability and tracing
+- **LangSmith** - LLM observability and tracing
 - **Pydantic v2** - Data validation and settings
 - **structlog** - Structured logging
 - **mem0ai** - Long-term memory management
@@ -160,20 +160,13 @@ Core dependencies in this project:
 
 ## Observability & Monitoring
 
-- Integrate Langfuse for LLM tracing on all agent operations
+- Integrate LangSmith for LLM tracing on all agent operations
+- Automatic tracing when `LANGCHAIN_TRACING_V2=true` in environment
 - Export Prometheus metrics for API performance, rate limits, and system resources
 - Use structured logging with context binding (request_id, session_id, user_id)
 - Implement health check endpoints (`/health`)
 - Configure Grafana dashboards for visualization
-- Track LLM inference duration, token usage, and costs
-
-## Testing & Evaluation
-
-- Implement metric-based evaluations for LLM outputs (see `evals/` directory)
-- Create custom evaluation metrics as markdown files in `evals/metrics/prompts/`
-- Use Langfuse traces for evaluation data sources
-- Generate JSON reports with success rates and detailed metrics
-- Use interactive CLI with rich formatting for running evaluations
+- Track LLM inference duration, token usage, and costs in LangSmith dashboard
 
 ## Configuration Management
 
@@ -186,7 +179,7 @@ Core dependencies in this project:
 ## Key Conventions
 
 1. All routes must have rate limiting decorators
-2. All LLM operations must have Langfuse tracing
+2. All LLM operations are automatically traced by LangSmith when enabled
 3. All async operations must have proper error handling
 4. All logs must follow structured logging format with lowercase_underscore event names
 5. All retries must use tenacity library
@@ -210,4 +203,4 @@ app/
 └── utils/           # Utility functions
 ```
 
-Refer to LangGraph, LangChain, FastAPI, and Langfuse documentation for best practices.
+Refer to LangGraph, LangChain, FastAPI, and LangSmith documentation for best practices.
