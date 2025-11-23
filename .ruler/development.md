@@ -28,7 +28,7 @@ make prod
 
 ### Docker Operations
 ```bash
-# Build and run with Docker (app + PostgreSQL only)
+# Build and run with Docker (app only)
 make docker-build-env ENV=development
 make docker-run-env ENV=development
 make docker-logs ENV=development
@@ -57,15 +57,15 @@ make format    # Format with ruff and black
 - **`app/main.py`**: FastAPI app initialization with lifespan manager, middleware stack, exception handlers, and router registration
 
 ### Middleware Stack (Applied in Order)
-1. **LoggingContextMiddleware** (`app/core/middleware.py`): Extracts user_id/session_id from JWT tokens and binds to logging context
+1. **LoggingContextMiddleware** (`app/core/middleware.py`): Extracts user_id from JWK tokens and binds to logging context
 2. **MetricsMiddleware** (`app/core/middleware.py`): Records HTTP request metrics (duration, status, method, endpoint)
 3. **PrometheusMiddleware**: Exports metrics to `/metrics` endpoint
 4. **CORSMiddleware**: Handles CORS preflight requests
 
 ### API Routes (`app/api/v1/`)
-- **`auth.py`**: Registration, login, session management (JWT-based)
 - **`chatbot.py`**: Chat endpoint, streaming chat, message history, history clearing
 - All endpoints have rate limiting via `@limiter.limit()` decorator
+- All endpoints require JWK authentication and conversation_id from client
 
 ### LangGraph Agent Architecture (`app/core/langgraph/graph.py`)
 **Graph Workflow**:
@@ -83,44 +83,44 @@ make format    # Format with ruff and black
 - **Circular Fallback**: Tries next model in registry on rate limit/timeout failures
 - **GPT-5 Reasoning**: Configurable reasoning effort levels (minimal, low, medium, high)
 
-### Database Architecture
+### MongoDB Architecture
 
-**Models** (`app/models/`):
-- **User** (`user.py`): Auto-increment ID, unique email (indexed), bcrypt password, one-to-many sessions
-- **Session** (`session.py`): UUID primary key, foreign key to user, optional name, timestamps
+**Storage**:
+- **LangGraph Checkpointing**: Conversation state persistence via MongoDBSaver
+- **mem0ai Memories**: User-specific semantic memories with vector search
+- **Collection Names**: Configurable via environment variables
 
-**Database Service** (`app/services/database.py`):
-- Async connection pooling (configurable pool_size/max_overflow)
-- Connection pre-ping for health checks
-- 30-minute connection recycling
-- CRUD operations for users/sessions
+**Configuration**:
+- Connection string: `MONGODB_URI` environment variable
+- Automatic connection pooling
+- Handles both LangGraph and mem0ai storage
 
-### Authentication Flow (`app/utils/auth.py`)
-1. User registers → JWT with `user_id` in `sub` claim
-2. User creates session → JWT with `session_id` in `sub` claim
-3. All requests use session token: `Authorization: Bearer <token>`
-4. Dependencies: `get_current_user()`, `get_current_session()` for protected routes
+### Authentication Flow (`app/utils/jwk_auth.py`)
+1. External auth service provides JWK tokens
+2. PyJWKClient fetches public keys from JWKS endpoint
+3. Tokens verified using EdDSA or RS256 algorithms
+4. User ID extracted from "sub" claim
+5. All requests: `Authorization: Bearer <jwk_token>`
+6. Dependency: `get_current_user()` for protected routes
 
-### Security Implementation (`app/utils/sanitization.py`)
-- HTML escaping (XSS prevention)
-- Script tag detection
-- Null byte removal
-- Bcrypt password hashing
-- Password strength validation (8+ chars, uppercase, lowercase, number, special char)
+### Security Implementation
+- JWK token verification with PyJWT
+- Input sanitization (XSS prevention, null byte removal)
 - Per-endpoint rate limiting (configurable via environment)
+- CORS configuration
+- Client provides conversation_id for session management
 
 ### Logging System (`app/core/logging.py`)
 - **Framework**: structlog with stdlib integration
 - **Outputs**: Console (dev) + JSONL file (production)
 - **Event Naming**: `lowercase_with_underscores` required
 - **NO f-strings**: Pass variables as kwargs for proper filtering
-- **Context Binding**: request_id, session_id, user_id auto-attached via middleware
-- **Example**: `logger.info("user_login", user_id=user.id, session_id=session.id)`
+- **Context Binding**: request_id, user_id, conversation_id auto-attached via middleware
+- **Example**: `logger.info("chat_received", user_id=user.user_id, conversation_id=conv_id)`
 
 ### Metrics Collection (`app/core/metrics.py`)
 - HTTP requests: count + duration (by method/endpoint)
 - LLM inference: duration (by model)
-- Database: active connection count
 - Prometheus endpoint: `/metrics`
 
 ### Environment Configuration (`app/core/config.py`)
@@ -151,18 +151,18 @@ When LLM calls fail (rate limits, timeouts), the service automatically tries the
 
 ### 2. Async/Await Throughout
 All I/O operations use async/await:
-- Database queries (asyncpg)
+- MongoDB queries (motor)
 - LLM calls (async clients)
 - Memory operations (mem0ai async)
 - Graph execution (LangGraph async)
 
 ### 3. Dependency Injection
 FastAPI `Depends()` for:
-- Authentication: `get_current_user`, `get_current_session`
-- Services: Singleton `DatabaseService`, `LLMService`
+- Authentication: `get_current_user` (JWK verification)
+- Services: Singleton `LLMService`
 
 ### 4. Request-Scoped Logging
-Middleware binds context (request_id, session_id, user_id) to structlog, automatically included in all log messages.
+Middleware binds context (request_id, user_id, conversation_id) to structlog, automatically included in all log messages.
 
 ### 5. State Persistence via Checkpointing
 LangGraph's `MongoDBSaver` persists conversation state to MongoDB Atlas, enabling:
@@ -176,7 +176,7 @@ LangGraph's `MongoDBSaver` persists conversation state to MongoDB Atlas, enablin
 1. Create route in `app/api/v1/{module}.py`
 2. Add rate limiting: `@limiter.limit(settings.RATE_LIMIT_ENDPOINTS["name"][0])`
 3. Define schemas in `app/schemas/`
-4. Add auth if needed: `session: Session = Depends(get_current_session)`
+4. Add auth if needed: `user: AuthUser = Depends(get_current_user)`
 5. Register router in `app/api/v1/api.py`
 
 ### Adding a LangGraph Tool
@@ -195,27 +195,21 @@ LangGraph's `MongoDBSaver` persists conversation state to MongoDB Atlas, enablin
 2. Set model parameters (temperature, max_tokens, reasoning effort)
 3. Update `DEFAULT_LLM_MODEL` in `.env` if desired
 
-### Extending Database Models
-1. Update SQLModel in `app/models/`
-2. Add methods to `DatabaseService` in `app/services/database.py`
-3. Update Pydantic schemas in `app/schemas/`
-4. Note: May require manual SQL migration
-
 ## Code Style Examples
 
 ### Correct Logging Pattern
 ```python
 # CORRECT
-logger.info("user_login_successful", user_id=user.id, session_id=session.id)
+logger.info("chat_processed", user_id=user.user_id, conversation_id=conv_id)
 
 # INCORRECT - No f-strings
-logger.info(f"User {user.id} logged in")
+logger.info(f"User {user.user_id} sent message")
 ```
 
 ### Correct Error Handling Pattern
 ```python
 # CORRECT - Early returns, guard clauses
-async def process_chat(message: str, session: Session) -> Response:
+async def process_chat(message: str, user: AuthUser, conversation_id: str) -> Response:
     if not message.strip():
         raise HTTPException(status_code=400, detail="Empty message")
 
@@ -223,7 +217,8 @@ async def process_chat(message: str, session: Session) -> Response:
         raise HTTPException(status_code=400, detail="Message too long")
 
     # Happy path last
-    return await agent.process(message, session)
+    thread_id = f"{user.user_id}:{conversation_id}"
+    return await agent.process(message, thread_id, user.user_id)
 ```
 
 ### Correct Retry Pattern
@@ -259,21 +254,19 @@ async def chat(request: Request, data: ChatRequest) -> ChatResponse:
 - Rate limits (`.env` files)
 
 ### Avoid Modifying
-- Core auth flow (security-critical)
+- JWK auth flow (security-critical)
 - Middleware ordering (breaks observability)
-- Database schema (breaks existing data)
 - LangGraph state structure (breaks checkpoints)
 - Logging configuration (structured format)
 
 ## Production Deployment
 
 1. Set `APP_ENV=production`
-2. Generate JWT secret: `openssl rand -hex 32`
-3. Configure external PostgreSQL
+2. Configure MongoDB Atlas connection string
+3. Configure external auth service (AUTH_URL, JWT_ISSUER, JWT_AUDIENCE)
 4. Set appropriate rate limits
 5. Configure LangSmith keys (optional, for observability)
 6. Set up Prometheus/Grafana
 7. Review CORS settings
 8. Enable uvloop (via Makefile)
 9. Configure log aggregation
-10. Set DB pool size for load

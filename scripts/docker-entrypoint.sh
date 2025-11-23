@@ -4,10 +4,6 @@ set -e
 # Print initial environment values (before loading .env)
 echo "Starting with these environment variables:"
 echo "APP_ENV: ${APP_ENV:-development}"
-echo "Initial Database Host: $( [[ -n ${POSTGRES_HOST:-${DB_HOST:-}} ]] && echo 'set' || echo 'Not set' )"
-echo "Initial Database Port: $( [[ -n ${POSTGRES_PORT:-${DB_PORT:-}} ]] && echo 'set' || echo 'Not set' )"
-echo "Initial Database Name: $( [[ -n ${POSTGRES_DB:-${DB_NAME:-}} ]] && echo 'set' || echo 'Not set' )"
-echo "Initial Database User: $( [[ -n ${POSTGRES_USER:-${DB_USER:-}} ]] && echo 'set' || echo 'Not set' )"
 
 # Load environment variables from the appropriate .env file
 if [ -f ".env.${APP_ENV}" ]; then
@@ -49,7 +45,7 @@ else
 fi
 
 # Check required sensitive environment variables
-required_vars=("JWT_SECRET_KEY" "OPENAI_API_KEY")
+required_vars=("OPENAI_API_KEY")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -70,12 +66,6 @@ fi
 # Print final environment info
 echo -e "\nFinal environment configuration:"
 echo "Environment: ${APP_ENV:-development}"
-
-echo "Database Host: $( [[ -n ${POSTGRES_HOST:-${DB_HOST:-}} ]] && echo 'set' || echo 'Not set' )"
-echo "Database Port: $( [[ -n ${POSTGRES_PORT:-${DB_PORT:-}} ]] && echo 'set' || echo 'Not set' )"
-echo "Database Name: $( [[ -n ${POSTGRES_DB:-${DB_NAME:-}} ]] && echo 'set' || echo 'Not set' )"
-echo "Database User: $( [[ -n ${POSTGRES_USER:-${DB_USER:-}} ]] && echo 'set' || echo 'Not set' )"
-
 echo "LLM Model: ${DEFAULT_LLM_MODEL:-Not set}"
 echo "Debug Mode: ${DEBUG:-false}"
 

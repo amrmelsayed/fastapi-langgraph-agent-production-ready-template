@@ -73,12 +73,6 @@ echo -e "${GREEN}Environment:     ${YELLOW}$ENV${NC}"
 echo -e "${GREEN}Project root:    ${YELLOW}$PROJECT_ROOT${NC}"
 echo -e "${GREEN}Project name:    ${YELLOW}${PROJECT_NAME:-Not set}${NC}"
 echo -e "${GREEN}API version:     ${YELLOW}${VERSION:-Not set}${NC}"
-
-echo -e "${GREEN}Database host:   ${YELLOW}${POSTGRES_HOST:-${DB_HOST:-Not set}}${NC}"
-echo -e "${GREEN}Database port:   ${YELLOW}${POSTGRES_PORT:-${DB_PORT:-Not set}}${NC}"
-echo -e "${GREEN}Database name:   ${YELLOW}${POSTGRES_DB:-${DB_NAME:-Not set}}${NC}"
-echo -e "${GREEN}Database user:   ${YELLOW}${POSTGRES_USER:-${DB_USER:-Not set}}${NC}"
-
 echo -e "${GREEN}LLM model:       ${YELLOW}${DEFAULT_LLM_MODEL:-Not set}${NC}"
 echo -e "${GREEN}Log level:       ${YELLOW}${LOG_LEVEL:-Not set}${NC}"
 echo -e "${GREEN}Debug mode:      ${YELLOW}${DEBUG:-Not set}${NC}"

@@ -56,12 +56,19 @@ class ChatRequest(BaseModel):
 
     Attributes:
         messages: List of messages in the conversation.
+        conversation_id: Unique identifier for the conversation/session.
     """
 
     messages: List[Message] = Field(
         ...,
         description="List of messages in the conversation",
         min_length=1,
+    )
+    conversation_id: str = Field(
+        ...,
+        description="Unique identifier for the conversation/session",
+        min_length=1,
+        max_length=100,
     )
 
 

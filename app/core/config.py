@@ -170,26 +170,17 @@ class Settings:
         self.SENTRY_DEBUG = os.getenv("SENTRY_DEBUG", "false").lower() in ("true", "1", "t", "yes")
         self.SENTRY_MAX_BREADCRUMBS = int(os.getenv("SENTRY_MAX_BREADCRUMBS", "100"))
 
-        # JWT Configuration
-        self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
-        self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-        self.JWT_ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_DAYS", "30"))
+        # JWK Authentication Configuration
+        self.AUTH_URL = os.getenv("AUTH_URL", "")
+        self.JWT_ISSUER = os.getenv("JWT_ISSUER", "")
+        self.JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "")
 
         # Logging Configuration
         self.LOG_DIR = Path(os.getenv("LOG_DIR", "logs"))
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
         self.LOG_FORMAT = os.getenv("LOG_FORMAT", "json")  # "json" or "console"
 
-        # Postgres Configuration (for user/session storage)
-        self.POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-        self.POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
-        self.POSTGRES_DB = os.getenv("POSTGRES_DB", "food_order_db")
-        self.POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-        self.POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
-        self.POSTGRES_POOL_SIZE = int(os.getenv("POSTGRES_POOL_SIZE", "20"))
-        self.POSTGRES_MAX_OVERFLOW = int(os.getenv("POSTGRES_MAX_OVERFLOW", "10"))
-
-        # MongoDB Configuration (for LangGraph checkpointing)
+        # MongoDB Configuration (for LangGraph checkpointing and mem0ai)
         self.MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 
         # Rate Limiting Configuration
@@ -200,8 +191,6 @@ class Settings:
             "chat": ["30 per minute"],
             "chat_stream": ["20 per minute"],
             "messages": ["50 per minute"],
-            "register": ["10 per hour"],
-            "login": ["20 per minute"],
             "root": ["10 per minute"],
             "health": ["20 per minute"],
         }

@@ -5,14 +5,9 @@ from typing import Callable
 
 import sentry_sdk
 from fastapi import Request
-from jose import (
-    JWTError,
-    jwt,
-)
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from app.core.config import settings
 from app.core.logging import (
     bind_context,
     clear_context,
@@ -22,6 +17,7 @@ from app.core.metrics import (
     http_request_duration_seconds,
     http_requests_total,
 )
+from app.utils.jwk_auth import verify_jwt
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
@@ -57,10 +53,10 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
 
 class LoggingContextMiddleware(BaseHTTPMiddleware):
-    """Middleware for adding user_id and session_id to logging context."""
+    """Middleware for adding user_id and conversation_id to logging context."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Extract user_id and session_id from authenticated requests and add to logging context.
+        """Extract user_id from JWK token and add to logging context.
 
         Also sets Sentry user context for better error tracking.
 
@@ -81,43 +77,28 @@ class LoggingContextMiddleware(BaseHTTPMiddleware):
                 token = auth_header.split(" ")[1]
 
                 try:
-                    # Decode token to get session_id (stored in "sub" claim)
-                    payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-                    session_id = payload.get("sub")
+                    # Verify JWK token and extract user_id from "sub" claim
+                    payload = verify_jwt(token)
+                    user_id = payload.get("sub")
 
-                    if session_id:
-                        # Bind session_id to logging context
-                        bind_context(session_id=session_id)
+                    if user_id:
+                        # Bind user_id to logging context
+                        bind_context(user_id=user_id)
 
-                        # Set Sentry context
-                        sentry_sdk.set_context(
-                            "session",
+                        # Set Sentry user context
+                        sentry_sdk.set_user(
                             {
-                                "session_id": session_id,
-                            },
+                                "id": user_id,
+                                "email": payload.get("email"),
+                            }
                         )
 
-                        # Try to get user_id from request state after authentication
-                        # This will be set by the dependency injection if the endpoint uses authentication
-                        # We'll check after the request is processed
-
-                except JWTError:
+                except Exception:
                     # Token is invalid, but don't fail the request - let the auth dependency handle it
                     pass
 
             # Process the request
             response = await call_next(request)
-
-            # After request processing, check if user info was added to request state
-            if hasattr(request.state, "user_id"):
-                bind_context(user_id=request.state.user_id)
-
-                # Set Sentry user context
-                sentry_sdk.set_user(
-                    {
-                        "id": request.state.user_id,
-                    }
-                )
 
             return response
 

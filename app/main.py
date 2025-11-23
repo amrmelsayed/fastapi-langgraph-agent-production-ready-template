@@ -179,18 +179,16 @@ async def health_check(request: Request) -> Dict[str, Any]:
     """
     logger.info("health_check_called")
 
-    # Check database connectivity
+    # Check MongoDB health
     db_healthy = await database_service.health_check()
 
     response = {
         "status": "healthy" if db_healthy else "degraded",
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT.value,
-        "components": {"api": "healthy", "database": "healthy" if db_healthy else "unhealthy"},
+        "components": {"api": "healthy", "mongodb": "healthy" if db_healthy else "unhealthy"},
         "timestamp": datetime.now().isoformat(),
     }
 
-    # If DB is unhealthy, set the appropriate status code
     status_code = status.HTTP_200_OK if db_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
-
     return JSONResponse(content=response, status_code=status_code)

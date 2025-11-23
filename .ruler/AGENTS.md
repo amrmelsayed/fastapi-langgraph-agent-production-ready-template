@@ -11,8 +11,7 @@ This is an AI agent application that:
 - Integrates **LangSmith** for LLM observability and tracing
 - Integrates **Sentry** for error tracking and performance monitoring
 - Uses **MongoDB Atlas** for LangGraph checkpointing, conversation state persistence, and long-term memory (mem0ai)
-- Uses **PostgreSQL** for user/session storage
-- Implements **JWT authentication** with session management
+- Implements **JWK authentication** with external auth service integration
 - Provides **rate limiting** with slowapi
 - Includes **Prometheus metrics** and **Grafana dashboards** for monitoring
 - Uses **structlog** for structured logging with environment-specific formatting
@@ -48,6 +47,7 @@ This is an AI agent application that:
 - Structure agents as classes that manage graph creation and execution (see `app/core/langgraph/graph.py`)
 - Use `Command` for controlling graph flow between nodes
 - Implement proper streaming responses for long-running agent operations
+- Thread IDs are formatted as `{user_id}:{conversation_id}` where conversation_id is provided by the client
 
 ## Long-Term Memory (mem0ai)
 
@@ -117,8 +117,7 @@ Core dependencies in this project:
 - **structlog** - Structured logging
 - **mem0ai** - Long-term memory management
 - **MongoDB Atlas** - LangGraph checkpoint storage and vector storage for mem0ai (cloud-hosted)
-- **PostgreSQL** - User/session database
-- **SQLModel** - ORM for database models
+- **PyJWT** - JWK token verification
 - **tenacity** - Retry logic
 - **rich** - Terminal formatting
 - **slowapi** - Rate limiting
@@ -137,23 +136,21 @@ Core dependencies in this project:
 
 ## Authentication & Security
 
-- Use JWT tokens for authentication
-- Implement session-based user management (see `app/api/v1/auth.py`)
-- Use `get_current_session` dependency for protected endpoints
+- Use JWK (JSON Web Key) tokens from external auth service
+- Implement `get_current_user` dependency from `app/utils/jwk_auth.py` for protected endpoints
+- PyJWT with PyJWKClient for JWK verification
 - Store sensitive data in environment variables, never in code
 - Implement proper CORS and rate limiting
 - Validate all user inputs with Pydantic models
+- Client must provide `conversation_id` with each chat request
 
 ## Database & Persistence
 
-- Use SQLModel for ORM models (combines SQLAlchemy + Pydantic)
-- Define models in `app/models/` directory
-- Use async database operations with asyncpg
-- Implement proper connection pooling
 - Use LangGraph's MongoDBSaver with MongoDB Atlas for agent checkpointing
 - Use mem0ai with MongoDB Atlas for long-term memory vector storage
-- Implement health checks for database connectivity
-- PostgreSQL is used for user/session storage; MongoDB Atlas is used for LangGraph checkpoints and mem0ai memories
+- MongoDB Atlas is used for both LangGraph checkpoints and mem0ai memories
+- No user/session database - authentication handled by external service
+- Conversation state persisted via LangGraph checkpointing with thread IDs
 
 ## Performance Optimization
 
@@ -202,14 +199,13 @@ Core dependencies in this project:
 
 ```markdown
 app/
-├── api/v1/          # API routes (auth, chatbot, etc.)
+├── api/v1/          # API routes (chatbot, etc.)
 ├── core/            # Core functionality (config, logging, metrics, middleware)
 │   ├── langgraph/   # LangGraph agent and tools
 │   └── prompts/     # System prompts for agents
-├── models/          # SQLModel database models
 ├── schemas/         # Pydantic schemas for API and graph state
-├── services/        # Business logic services (llm, database)
-└── utils/           # Utility functions
+├── services/        # Business logic services (llm)
+└── utils/           # Utility functions (jwk_auth, etc.)
 ```
 
 Refer to LangGraph, LangChain, FastAPI, and LangSmith documentation for best practices.

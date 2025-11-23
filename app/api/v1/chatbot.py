@@ -15,18 +15,20 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 
-from app.api.v1.auth import get_current_session
 from app.core.config import settings
 from app.core.langgraph.graph import LangGraphAgent
 from app.core.limiter import limiter
 from app.core.logging import logger
 from app.core.metrics import llm_stream_duration_seconds
-from app.models.session import Session
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
     Message,
     StreamResponse,
+)
+from app.utils.jwk_auth import (
+    AuthUser,
+    get_current_user,
 )
 
 router = APIRouter()
@@ -38,14 +40,14 @@ agent = LangGraphAgent()
 async def chat(
     request: Request,
     chat_request: ChatRequest,
-    session: Session = Depends(get_current_session),
+    user: AuthUser = Depends(get_current_user),
 ):
     """Process a chat request using LangGraph.
 
     Args:
         request: The FastAPI request object for rate limiting.
-        chat_request: The chat request containing messages.
-        session: The current session from the auth token.
+        chat_request: The chat request containing messages and conversation_id.
+        user: The authenticated user from JWK token.
 
     Returns:
         ChatResponse: The processed chat response.
@@ -54,19 +56,24 @@ async def chat(
         HTTPException: If there's an error processing the request.
     """
     try:
+        # Build thread_id from user_id and conversation_id
+        thread_id = f"{user.user_id}:{chat_request.conversation_id}"
+
         logger.info(
             "chat_request_received",
-            session_id=session.id,
+            user_id=user.user_id,
+            conversation_id=chat_request.conversation_id,
+            thread_id=thread_id,
             message_count=len(chat_request.messages),
         )
 
-        result = await agent.get_response(chat_request.messages, session.id, user_id=session.user_id)
+        result = await agent.get_response(chat_request.messages, thread_id, user_id=user.user_id)
 
-        logger.info("chat_request_processed", session_id=session.id)
+        logger.info("chat_request_processed", thread_id=thread_id, user_id=user.user_id)
 
         return ChatResponse(messages=result)
     except Exception as e:
-        logger.error("chat_request_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.error("chat_request_failed", user_id=user.user_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -75,14 +82,14 @@ async def chat(
 async def chat_stream(
     request: Request,
     chat_request: ChatRequest,
-    session: Session = Depends(get_current_session),
+    user: AuthUser = Depends(get_current_user),
 ):
     """Process a chat request using LangGraph with streaming response.
 
     Args:
         request: The FastAPI request object for rate limiting.
-        chat_request: The chat request containing messages.
-        session: The current session from the auth token.
+        chat_request: The chat request containing messages and conversation_id.
+        user: The authenticated user from JWK token.
 
     Returns:
         StreamingResponse: A streaming response of the chat completion.
@@ -90,10 +97,15 @@ async def chat_stream(
     Raises:
         HTTPException: If there's an error processing the request.
     """
+    # Build thread_id from user_id and conversation_id
+    thread_id = f"{user.user_id}:{chat_request.conversation_id}"
+
     try:
         logger.info(
             "stream_chat_request_received",
-            session_id=session.id,
+            user_id=user.user_id,
+            conversation_id=chat_request.conversation_id,
+            thread_id=thread_id,
             message_count=len(chat_request.messages),
         )
 
@@ -110,7 +122,7 @@ async def chat_stream(
                 full_response = ""
                 with llm_stream_duration_seconds.labels(model=agent.llm_service.get_llm().get_name()).time():
                     async for chunk in agent.get_stream_response(
-                        chat_request.messages, session.id, user_id=session.user_id
+                        chat_request.messages, thread_id, user_id=user.user_id
                     ):
                         full_response += chunk
                         response = StreamResponse(content=chunk, done=False)
@@ -123,7 +135,8 @@ async def chat_stream(
             except Exception as e:
                 logger.error(
                     "stream_chat_request_failed",
-                    session_id=session.id,
+                    user_id=user.user_id,
+                    thread_id=thread_id,
                     error=str(e),
                     exc_info=True,
                 )
@@ -135,7 +148,8 @@ async def chat_stream(
     except Exception as e:
         logger.error(
             "stream_chat_request_failed",
-            session_id=session.id,
+            user_id=user.user_id,
+            thread_id=thread_id,
             error=str(e),
             exc_info=True,
         )
@@ -146,25 +160,30 @@ async def chat_stream(
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["messages"][0])
 async def get_session_messages(
     request: Request,
-    session: Session = Depends(get_current_session),
+    conversation_id: str,
+    user: AuthUser = Depends(get_current_user),
 ):
-    """Get all messages for a session.
+    """Get all messages for a conversation.
 
     Args:
         request: The FastAPI request object for rate limiting.
-        session: The current session from the auth token.
+        conversation_id: The conversation/session identifier.
+        user: The authenticated user from JWK token.
 
     Returns:
-        ChatResponse: All messages in the session.
+        ChatResponse: All messages in the conversation.
 
     Raises:
         HTTPException: If there's an error retrieving the messages.
     """
     try:
-        messages = await agent.get_chat_history(session.id)
+        # Build thread_id from user_id and conversation_id
+        thread_id = f"{user.user_id}:{conversation_id}"
+
+        messages = await agent.get_chat_history(thread_id)
         return ChatResponse(messages=messages)
     except Exception as e:
-        logger.error("get_messages_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.error("get_messages_failed", user_id=user.user_id, conversation_id=conversation_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -172,20 +191,25 @@ async def get_session_messages(
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["messages"][0])
 async def clear_chat_history(
     request: Request,
-    session: Session = Depends(get_current_session),
+    conversation_id: str,
+    user: AuthUser = Depends(get_current_user),
 ):
-    """Clear all messages for a session.
+    """Clear all messages for a conversation.
 
     Args:
         request: The FastAPI request object for rate limiting.
-        session: The current session from the auth token.
+        conversation_id: The conversation/session identifier.
+        user: The authenticated user from JWK token.
 
     Returns:
         dict: A message indicating the chat history was cleared.
     """
     try:
-        await agent.clear_chat_history(session.id)
+        # Build thread_id from user_id and conversation_id
+        thread_id = f"{user.user_id}:{conversation_id}"
+
+        await agent.clear_chat_history(thread_id)
         return {"message": "Chat history cleared successfully"}
     except Exception as e:
-        logger.error("clear_chat_history_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.error("clear_chat_history_failed", user_id=user.user_id, conversation_id=conversation_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

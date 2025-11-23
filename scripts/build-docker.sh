@@ -51,11 +51,6 @@ mask_env() {
 }
 
 echo "Environment: $ENV"
-# Mask database connection metadata instead of printing it directly
-echo "Database host: $(mask_env "${POSTGRES_HOST:-${DB_HOST:-}}")"
-echo "Database port: $(mask_env "${POSTGRES_PORT:-${DB_PORT:-}}")"
-echo "Database name: $(mask_env "${POSTGRES_DB:-${DB_NAME:-}}")"
-echo "Database user: $(mask_env "${POSTGRES_USER:-${DB_USER:-}}")"
 echo "API keys: ******** (masked for security)"
 
 # Build the Docker image with secrets but without showing them in console output
@@ -63,7 +58,6 @@ docker build --no-cache \
     --build-arg APP_ENV="$ENV" \
     --build-arg OPENAI_API_KEY="$OPENAI_API_KEY" \
     --build-arg LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
-    --build-arg JWT_SECRET_KEY="$JWT_SECRET_KEY" \
     -t fastapi-langgraph-template:"$ENV" .
 
 echo "Docker image fastapi-langgraph-template:$ENV built successfully"
