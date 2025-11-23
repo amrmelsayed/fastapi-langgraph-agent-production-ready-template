@@ -76,14 +76,10 @@ class LangGraphAgent:
             self.memory = await AsyncMemory.from_config(
                 config_dict={
                     "vector_store": {
-                        "provider": "pgvector",
+                        "provider": "mongodb",
                         "config": {
+                            "mongo_uri": settings.MONGODB_URI,
                             "collection_name": settings.LONG_TERM_MEMORY_COLLECTION_NAME,
-                            "dbname": settings.POSTGRES_DB,
-                            "user": settings.POSTGRES_USER,
-                            "password": settings.POSTGRES_PASSWORD,
-                            "host": settings.POSTGRES_HOST,
-                            "port": settings.POSTGRES_PORT,
                         },
                     },
                     "llm": {

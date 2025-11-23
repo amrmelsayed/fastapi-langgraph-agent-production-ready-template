@@ -138,7 +138,7 @@ make format    # Format with ruff and black
 - **Production**: DEBUG=false, WARNING level, strict limits, uvloop optimization
 
 ### Long-Term Memory (`mem0ai`)
-- **Backend**: AsyncMemory with pgvector
+- **Backend**: AsyncMemory with MongoDB Atlas
 - **Storage**: Per-user semantic memory
 - **Methods**: `add()`, `get()`, `search()`, `delete()`
 - **Config**: Collection name, LLM model, embedder model (via environment)

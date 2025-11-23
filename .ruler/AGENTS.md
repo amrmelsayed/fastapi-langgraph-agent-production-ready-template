@@ -10,8 +10,8 @@ This is an AI agent application that:
 - Uses **FastAPI** for high-performance async REST API endpoints
 - Integrates **LangSmith** for LLM observability and tracing
 - Integrates **Sentry** for error tracking and performance monitoring
-- Uses **MongoDB Atlas** for LangGraph checkpointing and conversation state persistence
-- Uses **PostgreSQL** with **pgvector** for user/session storage and long-term memory (mem0ai)
+- Uses **MongoDB Atlas** for LangGraph checkpointing, conversation state persistence, and long-term memory (mem0ai)
+- Uses **PostgreSQL** for user/session storage
 - Implements **JWT authentication** with session management
 - Provides **rate limiting** with slowapi
 - Includes **Prometheus metrics** and **Grafana dashboards** for monitoring
@@ -52,7 +52,7 @@ This is an AI agent application that:
 ## Long-Term Memory (mem0ai)
 
 - Use mem0ai's `AsyncMemory` for semantic memory storage
-- Configure with pgvector as the vector store backend
+- Configure with MongoDB as the vector store backend
 - Store memories per user_id for personalized experiences
 - Use async methods: `add()`, `get()`, `search()`, `delete()`
 - Configure memory collection name via environment variables
@@ -116,8 +116,8 @@ Core dependencies in this project:
 - **Pydantic v2** - Data validation and settings
 - **structlog** - Structured logging
 - **mem0ai** - Long-term memory management
-- **MongoDB Atlas** - LangGraph checkpoint storage (cloud-hosted)
-- **PostgreSQL** with **pgvector** - User/session database and vector storage
+- **MongoDB Atlas** - LangGraph checkpoint storage and vector storage for mem0ai (cloud-hosted)
+- **PostgreSQL** - User/session database
 - **SQLModel** - ORM for database models
 - **tenacity** - Retry logic
 - **rich** - Terminal formatting
@@ -151,8 +151,9 @@ Core dependencies in this project:
 - Use async database operations with asyncpg
 - Implement proper connection pooling
 - Use LangGraph's MongoDBSaver with MongoDB Atlas for agent checkpointing
+- Use mem0ai with MongoDB Atlas for long-term memory vector storage
 - Implement health checks for database connectivity
-- PostgreSQL is used for user/session storage; MongoDB Atlas is used for LangGraph checkpoints
+- PostgreSQL is used for user/session storage; MongoDB Atlas is used for LangGraph checkpoints and mem0ai memories
 
 ## Performance Optimization
 
