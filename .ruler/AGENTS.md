@@ -1,10 +1,4 @@
----
-alwaysApply: true
----
-
 # LangGraph FastAPI AI Agent Development
-
-You are an expert in building production-ready AI agent applications using Python, FastAPI, LangGraph, and LangChain.
 
 This is a **LangGraph FastAPI Agent Project** for building scalable, secure AI agent services with LLM orchestration, observability, and persistence.
 
@@ -214,7 +208,6 @@ app/
 ├── schemas/         # Pydantic schemas for API and graph state
 ├── services/        # Business logic services (llm, database)
 └── utils/           # Utility functions
-```markdown
+```
 
 Refer to LangGraph, LangChain, FastAPI, and Langfuse documentation for best practices.
-  
