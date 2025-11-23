@@ -9,6 +9,7 @@ This is an AI agent application that:
 - Uses **LangGraph** for building stateful, multi-step AI agent workflows
 - Uses **FastAPI** for high-performance async REST API endpoints
 - Integrates **LangSmith** for LLM observability and tracing
+- Integrates **Sentry** for error tracking and performance monitoring
 - Uses **PostgreSQL** with **pgvector** for long-term memory storage (mem0ai)
 - Implements **JWT authentication** with session management
 - Provides **rate limiting** with slowapi
@@ -110,6 +111,7 @@ Core dependencies in this project:
 - **LangGraph** - Agent workflow orchestration
 - **LangChain** - LLM abstraction and tools
 - **LangSmith** - LLM observability and tracing
+- **Sentry** - Error tracking and performance monitoring
 - **Pydantic v2** - Data validation and settings
 - **structlog** - Structured logging
 - **mem0ai** - Long-term memory management
@@ -162,11 +164,14 @@ Core dependencies in this project:
 
 - Integrate LangSmith for LLM tracing on all agent operations
 - Automatic tracing when `LANGCHAIN_TRACING_V2=true` in environment
+- Integrate Sentry for error tracking and performance monitoring
+- Sentry automatically captures unhandled exceptions and tracks performance with environment-specific sampling
 - Export Prometheus metrics for API performance, rate limits, and system resources
 - Use structured logging with context binding (request_id, session_id, user_id)
 - Implement health check endpoints (`/health`)
 - Configure Grafana dashboards for visualization
 - Track LLM inference duration, token usage, and costs in LangSmith dashboard
+- Monitor errors, user context, and breadcrumbs in Sentry dashboard
 
 ## Configuration Management
 

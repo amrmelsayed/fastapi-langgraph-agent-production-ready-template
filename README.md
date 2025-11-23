@@ -9,6 +9,7 @@ A production-ready FastAPI template for building AI agent applications with Lang
   - FastAPI for high-performance async API endpoints with uvloop optimization
   - LangGraph integration for AI agent workflows with state persistence
   - LangSmith for LLM observability and monitoring
+  - Sentry for error tracking and performance monitoring
   - Structured logging with environment-specific formatting and request context
   - Rate limiting with configurable rules per endpoint
   - PostgreSQL with pgvector for data persistence and vector storage
