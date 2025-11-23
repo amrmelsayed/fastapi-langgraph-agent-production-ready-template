@@ -21,7 +21,10 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.v1.api import api_router
-from app.core.config import settings
+from app.core.config import (
+    Environment,
+    settings,
+)
 from app.core.limiter import limiter
 from app.core.logging import logger
 from app.core.metrics import setup_metrics
@@ -33,6 +36,11 @@ from app.services.database import database_service
 
 # Load environment variables
 load_dotenv()
+
+# Initialize Sentry (must be done before creating FastAPI app)
+from app.core.sentry import init_sentry
+
+init_sentry()
 
 
 @asynccontextmanager
@@ -99,6 +107,37 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": "Validation error", "errors": formatted_errors},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Handle unhandled exceptions and send to Sentry.
+
+    Args:
+        request: The request that caused the exception
+        exc: The unhandled exception
+
+    Returns:
+        JSONResponse: A generic error response
+    """
+    # Sentry will automatically capture this exception
+    logger.exception(
+        "unhandled_exception",
+        client_host=request.client.host if request.client else "unknown",
+        path=request.url.path,
+        method=request.method,
+    )
+
+    # Don't expose internal error details in production
+    if settings.ENVIRONMENT == Environment.PRODUCTION:
+        detail = "An internal error occurred. Please try again later."
+    else:
+        detail = str(exc)
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": detail},
     )
 
 

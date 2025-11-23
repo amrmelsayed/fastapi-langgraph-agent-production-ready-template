@@ -159,6 +159,17 @@ class Settings:
         self.LONG_TERM_MEMORY_MODEL = os.getenv("LONG_TERM_MEMORY_MODEL", "gpt-5-nano")
         self.LONG_TERM_MEMORY_EMBEDDER_MODEL = os.getenv("LONG_TERM_MEMORY_EMBEDDER_MODEL", "text-embedding-3-small")
         self.LONG_TERM_MEMORY_COLLECTION_NAME = os.getenv("LONG_TERM_MEMORY_COLLECTION_NAME", "longterm_memory")
+
+        # Sentry Configuration
+        self.SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+        self.SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", self.ENVIRONMENT.value)
+        self.SENTRY_ENABLED = os.getenv("SENTRY_ENABLED", "true").lower() in ("true", "1", "t", "yes")
+        self.SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0"))
+        self.SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "1.0"))
+        self.SENTRY_SEND_DEFAULT_PII = os.getenv("SENTRY_SEND_DEFAULT_PII", "false").lower() in ("true", "1", "t", "yes")
+        self.SENTRY_DEBUG = os.getenv("SENTRY_DEBUG", "false").lower() in ("true", "1", "t", "yes")
+        self.SENTRY_MAX_BREADCRUMBS = int(os.getenv("SENTRY_MAX_BREADCRUMBS", "100"))
+
         # JWT Configuration
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
         self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
@@ -212,22 +223,32 @@ class Settings:
                 "LOG_LEVEL": "DEBUG",
                 "LOG_FORMAT": "console",
                 "RATE_LIMIT_DEFAULT": ["1000 per day", "200 per hour"],
+                "SENTRY_TRACES_SAMPLE_RATE": 1.0,
+                "SENTRY_PROFILES_SAMPLE_RATE": 1.0,
+                "SENTRY_DEBUG": True,
             },
             Environment.STAGING: {
                 "DEBUG": False,
                 "LOG_LEVEL": "INFO",
                 "RATE_LIMIT_DEFAULT": ["500 per day", "100 per hour"],
+                "SENTRY_TRACES_SAMPLE_RATE": 0.3,
+                "SENTRY_PROFILES_SAMPLE_RATE": 0.3,
+                "SENTRY_DEBUG": False,
             },
             Environment.PRODUCTION: {
                 "DEBUG": False,
                 "LOG_LEVEL": "WARNING",
                 "RATE_LIMIT_DEFAULT": ["200 per day", "50 per hour"],
+                "SENTRY_TRACES_SAMPLE_RATE": 0.1,
+                "SENTRY_PROFILES_SAMPLE_RATE": 0.1,
+                "SENTRY_DEBUG": False,
             },
             Environment.TEST: {
                 "DEBUG": True,
                 "LOG_LEVEL": "DEBUG",
                 "LOG_FORMAT": "console",
                 "RATE_LIMIT_DEFAULT": ["1000 per day", "1000 per hour"],  # Relaxed for testing
+                "SENTRY_ENABLED": False,
             },
         }
 

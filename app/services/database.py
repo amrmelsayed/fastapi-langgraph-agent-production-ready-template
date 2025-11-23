@@ -5,6 +5,7 @@ from typing import (
     Optional,
 )
 
+import sentry_sdk
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import QueuePool
@@ -65,6 +66,17 @@ class DatabaseService:
             )
         except SQLAlchemyError as e:
             logger.error("database_initialization_error", error=str(e), environment=settings.ENVIRONMENT.value)
+
+            # Capture in Sentry
+            sentry_sdk.capture_exception(e)
+            sentry_sdk.set_context(
+                "database",
+                {
+                    "error": "initialization_failed",
+                    "environment": settings.ENVIRONMENT.value,
+                },
+            )
+
             # In production, don't raise - allow app to start even with DB issues
             if settings.ENVIRONMENT != Environment.PRODUCTION:
                 raise
@@ -244,6 +256,16 @@ class DatabaseService:
                 return True
         except Exception as e:
             logger.error("database_health_check_failed", error=str(e))
+
+            # Set context but don't capture (health checks fail often)
+            sentry_sdk.set_context(
+                "database_health",
+                {
+                    "status": "unhealthy",
+                    "error": str(e),
+                },
+            )
+
             return False
 
 

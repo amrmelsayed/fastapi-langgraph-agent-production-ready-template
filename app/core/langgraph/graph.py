@@ -7,6 +7,7 @@ from typing import (
 )
 from urllib.parse import quote_plus
 
+import sentry_sdk
 from asgiref.sync import sync_to_async
 from langchain_core.messages import (
     BaseMessage,
@@ -190,6 +191,18 @@ class LangGraphAgent:
             else settings.DEFAULT_LLM_MODEL
         )
 
+        # Add Sentry breadcrumb
+        session_id = config["configurable"]["thread_id"]
+        sentry_sdk.add_breadcrumb(
+            category="langgraph",
+            message="Processing chat node",
+            level="info",
+            data={
+                "session_id": session_id,
+                "message_count": len(state.messages),
+            },
+        )
+
         SYSTEM_PROMPT = load_system_prompt(long_term_memory=state.long_term_memory)
 
         # Prepare messages with system prompt
@@ -311,6 +324,10 @@ class LangGraphAgent:
         """
         if self._graph is None:
             self._graph = await self.create_graph()
+
+        # Set Sentry transaction name
+        sentry_sdk.set_transaction_name("langgraph.get_response")
+
         config = {
             "configurable": {"thread_id": session_id},
             "metadata": {
@@ -336,7 +353,17 @@ class LangGraphAgent:
             )
             return self.__process_messages(response["messages"])
         except Exception as e:
+            # Add context before re-raising
+            sentry_sdk.set_context(
+                "langgraph_error",
+                {
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "message_count": len(messages),
+                },
+            )
             logger.error(f"Error getting response: {str(e)}")
+            raise
 
     async def get_stream_response(
         self, messages: list[Message], session_id: str, user_id: Optional[str] = None
@@ -351,6 +378,9 @@ class LangGraphAgent:
         Yields:
             str: Tokens of the LLM response.
         """
+        # Set Sentry transaction name
+        sentry_sdk.set_transaction_name("langgraph.get_stream_response")
+
         config = {
             "configurable": {"thread_id": session_id},
             "metadata": {
@@ -389,6 +419,15 @@ class LangGraphAgent:
                     )
                 )
         except Exception as stream_error:
+            # Add context before re-raising
+            sentry_sdk.set_context(
+                "langgraph_stream_error",
+                {
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "message_count": len(messages),
+                },
+            )
             logger.error("Error in stream processing", error=str(stream_error), session_id=session_id)
             raise stream_error
 

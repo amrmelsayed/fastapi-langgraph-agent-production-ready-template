@@ -3,6 +3,7 @@
 import time
 from typing import Callable
 
+import sentry_sdk
 from fastapi import Request
 from jose import (
     JWTError,
@@ -61,6 +62,8 @@ class LoggingContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Extract user_id and session_id from authenticated requests and add to logging context.
 
+        Also sets Sentry user context for better error tracking.
+
         Args:
             request: The incoming request
             call_next: The next middleware or route handler
@@ -86,6 +89,14 @@ class LoggingContextMiddleware(BaseHTTPMiddleware):
                         # Bind session_id to logging context
                         bind_context(session_id=session_id)
 
+                        # Set Sentry context
+                        sentry_sdk.set_context(
+                            "session",
+                            {
+                                "session_id": session_id,
+                            },
+                        )
+
                         # Try to get user_id from request state after authentication
                         # This will be set by the dependency injection if the endpoint uses authentication
                         # We'll check after the request is processed
@@ -100,6 +111,13 @@ class LoggingContextMiddleware(BaseHTTPMiddleware):
             # After request processing, check if user info was added to request state
             if hasattr(request.state, "user_id"):
                 bind_context(user_id=request.state.user_id)
+
+                # Set Sentry user context
+                sentry_sdk.set_user(
+                    {
+                        "id": request.state.user_id,
+                    }
+                )
 
             return response
 

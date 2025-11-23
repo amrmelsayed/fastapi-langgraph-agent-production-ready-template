@@ -7,6 +7,7 @@ from typing import (
     Optional,
 )
 
+import sentry_sdk
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
@@ -244,11 +245,33 @@ class LLMService:
         if not self._llm:
             raise RuntimeError("llm not initialized")
 
+        # Add Sentry breadcrumb
+        model_name = self._llm.model_name if hasattr(self._llm, "model_name") else "unknown"
+        sentry_sdk.add_breadcrumb(
+            category="llm",
+            message="Calling LLM",
+            level="info",
+            data={
+                "model": model_name,
+                "message_count": len(messages),
+            },
+        )
+
         try:
             response = await self._llm.ainvoke(messages)
             logger.debug("llm_call_successful", message_count=len(messages))
             return response
         except (RateLimitError, APITimeoutError, APIError) as e:
+            # Add error context to Sentry
+            sentry_sdk.set_context(
+                "llm_error",
+                {
+                    "error_type": type(e).__name__,
+                    "model": model_name,
+                    "message_count": len(messages),
+                },
+            )
+
             logger.warning(
                 "llm_call_failed_retrying",
                 error_type=type(e).__name__,
@@ -257,6 +280,9 @@ class LLMService:
             )
             raise
         except OpenAIError as e:
+            # Capture in Sentry
+            sentry_sdk.capture_exception(e)
+
             logger.error(
                 "llm_call_failed",
                 error_type=type(e).__name__,
