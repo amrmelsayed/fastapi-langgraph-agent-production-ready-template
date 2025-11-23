@@ -10,7 +10,8 @@ This is an AI agent application that:
 - Uses **FastAPI** for high-performance async REST API endpoints
 - Integrates **LangSmith** for LLM observability and tracing
 - Integrates **Sentry** for error tracking and performance monitoring
-- Uses **PostgreSQL** with **pgvector** for long-term memory storage (mem0ai)
+- Uses **MongoDB Atlas** for LangGraph checkpointing and conversation state persistence
+- Uses **PostgreSQL** with **pgvector** for user/session storage and long-term memory (mem0ai)
 - Implements **JWT authentication** with session management
 - Provides **rate limiting** with slowapi
 - Includes **Prometheus metrics** and **Grafana dashboards** for monitoring
@@ -42,7 +43,7 @@ This is an AI agent application that:
 - Use LangGraph `StateGraph` for building AI agent workflows with multiple steps/nodes
 - Define clear state schemas using Pydantic models (see `app/schemas/graph.py`)
 - Use `CompiledStateGraph` for production workflows
-- Implement `AsyncPostgresSaver` for checkpointing and persistence
+- Implement `MongoDBSaver` for checkpointing and persistence using MongoDB Atlas
 - LangSmith automatically traces LLM calls when `LANGCHAIN_TRACING_V2=true`
 - Structure agents as classes that manage graph creation and execution (see `app/core/langgraph/graph.py`)
 - Use `Command` for controlling graph flow between nodes
@@ -115,7 +116,8 @@ Core dependencies in this project:
 - **Pydantic v2** - Data validation and settings
 - **structlog** - Structured logging
 - **mem0ai** - Long-term memory management
-- **PostgreSQL** with **pgvector** - Database and vector storage
+- **MongoDB Atlas** - LangGraph checkpoint storage (cloud-hosted)
+- **PostgreSQL** with **pgvector** - User/session database and vector storage
 - **SQLModel** - ORM for database models
 - **tenacity** - Retry logic
 - **rich** - Terminal formatting
@@ -148,8 +150,9 @@ Core dependencies in this project:
 - Define models in `app/models/` directory
 - Use async database operations with asyncpg
 - Implement proper connection pooling
-- Use LangGraph's AsyncPostgresSaver for agent checkpointing
+- Use LangGraph's MongoDBSaver with MongoDB Atlas for agent checkpointing
 - Implement health checks for database connectivity
+- PostgreSQL is used for user/session storage; MongoDB Atlas is used for LangGraph checkpoints
 
 ## Performance Optimization
 

@@ -73,7 +73,7 @@ make format    # Format with ruff and black
 - **chat node**: LLM invocation with system prompt, long-term memory context, tool calling capability
 - **tool_call node**: Executes tools (DuckDuckGo search) based on LLM tool calls
 - **State Schema**: `app/schemas/graph.py` - messages list + request context
-- **Persistence**: `AsyncPostgresSaver` checkpoints state to PostgreSQL
+- **Persistence**: `MongoDBSaver` checkpoints state to MongoDB Atlas (cloud-hosted)
 - **Memory Integration**: mem0ai retrieves/stores semantic memories per user
 - **Resilience**: Automatic retries (tenacity), circular model fallback, streaming support
 
@@ -165,7 +165,7 @@ FastAPI `Depends()` for:
 Middleware binds context (request_id, session_id, user_id) to structlog, automatically included in all log messages.
 
 ### 5. State Persistence via Checkpointing
-LangGraph's `AsyncPostgresSaver` persists conversation state to PostgreSQL, enabling:
+LangGraph's `MongoDBSaver` persists conversation state to MongoDB Atlas, enabling:
 - Crash recovery
 - Multi-turn conversations
 - Workflow replay/debugging

@@ -5,7 +5,6 @@ from typing import (
     AsyncGenerator,
     Optional,
 )
-from urllib.parse import quote_plus
 
 import sentry_sdk
 from asgiref.sync import sync_to_async
@@ -14,7 +13,7 @@ from langchain_core.messages import (
     ToolMessage,
     convert_to_openai_messages,
 )
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.checkpoint.mongodb import MongoDBSaver
 from langgraph.graph import (
     END,
     StateGraph,
@@ -28,7 +27,6 @@ from langgraph.types import (
     StateSnapshot,
 )
 from mem0 import AsyncMemory
-from psycopg_pool import AsyncConnectionPool
 
 from app.core.config import (
     Environment,
@@ -63,8 +61,8 @@ class LangGraphAgent:
         self.llm_service = llm_service
         self.llm_service.bind_tools(tools)
         self.tools_by_name = {tool.name: tool for tool in tools}
-        self._connection_pool: Optional[AsyncConnectionPool] = None
         self._graph: Optional[CompiledStateGraph] = None
+        self._checkpointer: Optional[MongoDBSaver] = None
         self.memory: Optional[AsyncMemory] = None
         logger.info(
             "langgraph_agent_initialized",
@@ -98,43 +96,35 @@ class LangGraphAgent:
             )
         return self.memory
 
-    async def _get_connection_pool(self) -> AsyncConnectionPool:
-        """Get a PostgreSQL connection pool using environment-specific settings.
+    async def _get_checkpointer(self) -> Optional[MongoDBSaver]:
+        """Get a MongoDB checkpointer using environment-specific settings.
 
         Returns:
-            AsyncConnectionPool: A connection pool for PostgreSQL database.
+            Optional[MongoDBSaver]: A MongoDB checkpointer or None if initialization fails.
         """
-        if self._connection_pool is None:
+        if self._checkpointer is None:
             try:
-                # Configure pool size based on environment
-                max_size = settings.POSTGRES_POOL_SIZE
-
-                connection_url = (
-                    "postgresql://"
-                    f"{quote_plus(settings.POSTGRES_USER)}:{quote_plus(settings.POSTGRES_PASSWORD)}"
-                    f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+                self._checkpointer = MongoDBSaver.from_conn_string(settings.MONGODB_URI)
+                logger.info(
+                    "mongodb_checkpointer_created",
+                    mongodb_uri=settings.MONGODB_URI,
+                    environment=settings.ENVIRONMENT.value
                 )
-
-                self._connection_pool = AsyncConnectionPool(
-                    connection_url,
-                    open=False,
-                    max_size=max_size,
-                    kwargs={
-                        "autocommit": True,
-                        "connect_timeout": 5,
-                        "prepare_threshold": None,
-                    },
-                )
-                await self._connection_pool.open()
-                logger.info("connection_pool_created", max_size=max_size, environment=settings.ENVIRONMENT.value)
             except Exception as e:
-                logger.error("connection_pool_creation_failed", error=str(e), environment=settings.ENVIRONMENT.value)
+                logger.error(
+                    "mongodb_checkpointer_creation_failed",
+                    error=str(e),
+                    environment=settings.ENVIRONMENT.value
+                )
                 # In production, we might want to degrade gracefully
                 if settings.ENVIRONMENT == Environment.PRODUCTION:
-                    logger.warning("continuing_without_connection_pool", environment=settings.ENVIRONMENT.value)
+                    logger.warning(
+                        "continuing_without_checkpointer",
+                        environment=settings.ENVIRONMENT.value
+                    )
                     return None
                 raise e
-        return self._connection_pool
+        return self._checkpointer
 
     async def _get_relevant_memory(self, user_id: str, query: str) -> str:
         """Get the relevant memory for the user and query.
@@ -275,16 +265,10 @@ class LangGraphAgent:
                 graph_builder.set_entry_point("chat")
                 graph_builder.set_finish_point("chat")
 
-                # Get connection pool (may be None in production if DB unavailable)
-                connection_pool = await self._get_connection_pool()
-                if connection_pool:
-                    checkpointer = AsyncPostgresSaver(connection_pool)
-                    await checkpointer.setup()
-                else:
-                    # In production, proceed without checkpointer if needed
-                    checkpointer = None
-                    if settings.ENVIRONMENT != Environment.PRODUCTION:
-                        raise Exception("Connection pool initialization failed")
+                # Get MongoDB checkpointer (may be None in production if DB unavailable)
+                checkpointer = await self._get_checkpointer()
+                if checkpointer is None and settings.ENVIRONMENT != Environment.PRODUCTION:
+                    raise Exception("MongoDB checkpointer initialization failed")
 
                 self._graph = graph_builder.compile(
                     checkpointer=checkpointer, name=f"{settings.PROJECT_NAME} Agent ({settings.ENVIRONMENT.value})"
@@ -467,19 +451,31 @@ class LangGraphAgent:
             Exception: If there's an error clearing the chat history.
         """
         try:
-            # Make sure the pool is initialized in the current event loop
-            conn_pool = await self._get_connection_pool()
+            # Get the checkpointer
+            checkpointer = await self._get_checkpointer()
+            if checkpointer is None:
+                raise Exception("MongoDB checkpointer not available")
 
-            # Use a new connection for this specific operation
-            async with conn_pool.connection() as conn:
-                for table in settings.CHECKPOINT_TABLES:
-                    try:
-                        await conn.execute(f"DELETE FROM {table} WHERE thread_id = %s", (session_id,))
-                        logger.info(f"Cleared {table} for session {session_id}")
-                    except Exception as e:
-                        logger.error(f"Error clearing {table}", error=str(e))
-                        raise
+            # Access the underlying MongoDB database through the checkpointer's connection
+            # The database name is parsed from the connection string
+            db = checkpointer.db
 
+            # Delete from checkpoints collection
+            checkpoint_result = await sync_to_async(db.checkpoints.delete_many)(
+                {"thread_id": session_id}
+            )
+
+            # Delete from writes collection
+            writes_result = await sync_to_async(db.checkpoint_writes.delete_many)(
+                {"thread_id": session_id}
+            )
+
+            logger.info(
+                "chat_history_cleared",
+                session_id=session_id,
+                checkpoints_deleted=checkpoint_result.deleted_count,
+                writes_deleted=writes_result.deleted_count
+            )
         except Exception as e:
-            logger.error("Failed to clear chat history", error=str(e))
+            logger.error("failed_to_clear_chat_history", error=str(e), session_id=session_id)
             raise
