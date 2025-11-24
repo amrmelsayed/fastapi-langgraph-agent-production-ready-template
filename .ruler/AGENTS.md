@@ -53,6 +53,7 @@ This is an AI agent application that:
 
 - Use mem0ai's `AsyncMemory` for semantic memory storage
 - Configure with MongoDB as the vector store backend
+- MongoDB connection requires separate `mongo_uri` and `db_name` parameters (configured via `MONGODB_URI` and `MONGODB_DB_NAME`)
 - Store memories per user_id for personalized experiences
 - Use async methods: `add()`, `get()`, `search()`, `delete()`
 - Configure memory collection name via environment variables
@@ -149,6 +150,8 @@ Core dependencies in this project:
 - Use LangGraph's MongoDBSaver with MongoDB Atlas for agent checkpointing
 - Use mem0ai with MongoDB Atlas for long-term memory vector storage
 - MongoDB Atlas is used for both LangGraph checkpoints and mem0ai memories
+- MongoDB configuration uses separate URI and database name: `MONGODB_URI` (connection string without database) and `MONGODB_DB_NAME` (database name)
+- Do not include the database name in the MongoDB URI path - specify it separately via `MONGODB_DB_NAME`
 - No user/session database - authentication handled by external service
 - Conversation state persisted via LangGraph checkpointing with thread IDs
 

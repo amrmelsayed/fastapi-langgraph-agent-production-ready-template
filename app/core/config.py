@@ -182,6 +182,7 @@ class Settings:
 
         # MongoDB Configuration (for LangGraph checkpointing and mem0ai)
         self.MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+        self.MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "langgraph_db")
 
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])

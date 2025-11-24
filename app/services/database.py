@@ -33,7 +33,10 @@ class DatabaseService:
 
             # Ping the database to verify connectivity
             await self.client.admin.command("ping")
-            logger.debug("mongodb_health_check_success")
+            logger.debug(
+                "mongodb_health_check_success",
+                mongodb_db_name=settings.MONGODB_DB_NAME
+            )
             return True
 
         except Exception as e:

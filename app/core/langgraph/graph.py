@@ -79,6 +79,7 @@ class LangGraphAgent:
                         "provider": "mongodb",
                         "config": {
                             "mongo_uri": settings.MONGODB_URI,
+                            "db_name": settings.MONGODB_DB_NAME,
                             "collection_name": settings.LONG_TERM_MEMORY_COLLECTION_NAME,
                         },
                     },
@@ -100,10 +101,14 @@ class LangGraphAgent:
         """
         if self._checkpointer is None:
             try:
-                self._checkpointer = MongoDBSaver.from_conn_string(settings.MONGODB_URI)
+                self._checkpointer = MongoDBSaver.from_conn_string(
+                    settings.MONGODB_URI,
+                    settings.MONGODB_DB_NAME
+                )
                 logger.info(
                     "mongodb_checkpointer_created",
                     mongodb_uri=settings.MONGODB_URI,
+                    mongodb_db_name=settings.MONGODB_DB_NAME,
                     environment=settings.ENVIRONMENT.value
                 )
             except Exception as e:

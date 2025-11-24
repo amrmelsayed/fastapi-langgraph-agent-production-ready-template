@@ -80,7 +80,9 @@ cp .env.example .env.[development|staging|production] # e.g. .env.development
 3. Update the MongoDB connection in your `.env` file:
 
 ```bash
+# Note: Do not include the database name in the URI path - specify it separately
 MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB_NAME=langgraph_db
 ```
 
 ### Authentication Setup
@@ -168,7 +170,9 @@ PROJECT_NAME="FastAPI LangGraph Agent"
 DEBUG=true
 
 # MongoDB (for LangGraph checkpointing and mem0ai)
+# Note: Do not include the database name in the URI path - specify it separately
 MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB_NAME=langgraph_db
 
 # JWK Authentication
 AUTH_URL="https://your-auth-service.com"
