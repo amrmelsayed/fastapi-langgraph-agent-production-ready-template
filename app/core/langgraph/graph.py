@@ -27,6 +27,7 @@ from langgraph.types import (
     StateSnapshot,
 )
 from mem0 import AsyncMemory
+from pymongo import MongoClient
 
 from app.core.config import (
     Environment,
@@ -101,10 +102,13 @@ class LangGraphAgent:
         """
         if self._checkpointer is None:
             try:
-                self._checkpointer = MongoDBSaver.from_conn_string(
-                    settings.MONGODB_URI,
-                    settings.MONGODB_DB_NAME
-                )
+                # Connect to MongoDB cluster
+                client = MongoClient(settings.MONGODB_URI)
+
+                # Initialize the MongoDB checkpointer with the client
+                # The checkpointer will use the database specified in MONGODB_DB_NAME
+                self._checkpointer = MongoDBSaver(client, db_name=settings.MONGODB_DB_NAME)
+
                 logger.info(
                     "mongodb_checkpointer_created",
                     mongodb_uri=settings.MONGODB_URI,
